@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:either_dart/either.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:mini_vera/domain/entities/admins.dart';
 import 'package:mini_vera/domain/entities/users.dart';
 import 'package:mini_vera/domain/repository_ports/users_repository_port.dart';
 import 'package:mini_vera/domain/utils/datetime.dart';
@@ -9,7 +10,7 @@ import 'package:mini_vera/repositories/tools.dart';
 
 class UsersRepositoryFirestoreAdapter implements UsersRepositoryPort {
   @override
-  Future<Either<Failure, IESAdminUser>> loginAndVerifyAdmin(
+  Future<Either<Failure, IESAdmin>> loginAndVerifyAdmin(
       {required String email, required String password}) async {
     try {
       // 1. Autenticar usuario con FirebaseAuth
@@ -21,6 +22,7 @@ class UsersRepositoryFirestoreAdapter implements UsersRepositoryPort {
 
       // 2. Obtener usuario autenticado
       User? user = userCredential.user;
+
       if (user == null) {
         return Left(Failure(
             failureName: FailureName.unknown,
@@ -51,13 +53,11 @@ class UsersRepositoryFirestoreAdapter implements UsersRepositoryPort {
           .collection('roles')
           .get();
 
-      List<Map<String, dynamic>> roles = rolesSnapshot.docs
+      List<IESAdminRole> adminRoles = rolesSnapshot.docs
           .map((doc) => doc.data() as Map<String, dynamic>)
-          .toList();
-
-      List<Map<String, dynamic>> adminRoles = roles
           .where((role) => role['role'] == 'administrative')
-          .map((role) => role)
+          .map((role) => IESAdminRole(
+              syllabusID: role['syllabus']!, id: usersSnapshot.docs.first.id))
           .toList();
 
       bool isAdmin = adminRoles.isNotEmpty;
@@ -67,19 +67,14 @@ class UsersRepositoryFirestoreAdapter implements UsersRepositoryPort {
             message: "El usuario no tiene permisos administrativos."));
       }
 
-      // Crear una lista de syllabusIDs con los valores 'syllabus' de cada rol administrativo
-      List<String> syllabusIDs =
-          adminRoles.map((role) => role['syllabus']! as String).toList();
-
-      // 6. Retornar una instancia de IESAdminUser
-      return Right(IESAdminUser(
+      return Right(IESAdmin(
         id: user.uid,
         email: user.email!,
-        firstName: userData['firstname'],
-        lastName: userData['surname'],
-        birthdate: stringToDate(userData['birthdate']),
+        firstname: userData['firstname'],
+        surname: userData['surname'],
         dni: userData['dni'],
-        syllabusIDs: syllabusIDs,
+        currentSyllabusID: adminRoles.first.syllabusID,
+        syllabusIDs: adminRoles.map((role) => role.syllabusID).toList(),
       ));
     } catch (e) {
       return Left(Failure(
@@ -123,6 +118,54 @@ class UsersRepositoryFirestoreAdapter implements UsersRepositoryPort {
       return Tools().repoFirestoreAuthInstance.currentUser!.emailVerified;
     } else {
       return false;
+    }
+  }
+
+  @override
+  Future<List<IESUser>> searchUsersByName(
+      {String? firstname,
+      required String surname,
+      IESRoleForSearch? role}) async {
+    try {
+      // Crear una consulta base para buscar por apellido
+      Query query = Tools()
+          .repoFirestoreInstance
+          .collection('iesUsers')
+          .where('surname', isGreaterThanOrEqualTo: surname.trim())
+          .where('surname', isLessThanOrEqualTo: '${surname.trim()}\uf8ff');
+
+      // Si se proporciona el nombre, agregarlo a la consulta
+      if (firstname != null && firstname.isNotEmpty) {
+        query = query
+            .where('firstname', isGreaterThanOrEqualTo: firstname.trim())
+            .where('firstname',
+                isLessThanOrEqualTo: '${firstname.trim()}\uf8ff');
+      }
+
+      // Ejecutar la consulta
+      QuerySnapshot usersSnapshot = await query.get();
+
+      // Si no se encuentra ningún documento, devolver una lista vacía
+      if (usersSnapshot.docs.isEmpty) {
+        return [];
+      }
+
+      // Crear y devolver una lista de instancias de IESUser
+      return usersSnapshot.docs.map((doc) {
+        var userData = doc.data() as Map<String, dynamic>;
+        return IESUser(
+          firstname: userData['firstname'],
+          surname: userData['surname'],
+          id: doc.id,
+          birthdate: stringToDate(userData['birthdate']),
+          email: userData['email'],
+          dni: userData['dni'],
+          roles: [], // Asignar roles según sea necesario
+        );
+      }).toList();
+    } catch (e) {
+      // Manejar errores y devolver una lista vacía en caso de excepción
+      return [];
     }
   }
 }

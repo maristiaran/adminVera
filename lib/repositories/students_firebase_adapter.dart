@@ -1,46 +1,78 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mini_vera/domain/entities/admins.dart';
 import 'package:mini_vera/domain/entities/students.dart';
 import 'package:mini_vera/domain/entities/syllabus.dart';
-import 'package:mini_vera/domain/entities/users.dart';
 import 'package:mini_vera/domain/repository_ports/students_repository_port.dart';
 import 'package:mini_vera/repositories/tools.dart';
 
 class StudentsFirebaseAdapter implements StudentsRepositoryPort {
   @override
-  Future<List<IESStudentUser>> searchStudentsByName(
-      {String? firstName,
-      required String lastName,
-      required Syllabus syllabus}) async {
-    List<IESStudentUser> newIESUsers = [];
-
-    await Tools()
-        .repoFirestoreInstance
-        .collection("syllabuses")
-        .doc(syllabus.administrativeResolution)
-        .collection('students')
-        .where('lastName', isEqualTo: lastName.trim())
-        // .limit(8)
-        .get()
-        .then((qs) async {
-      for (var qsDoc in qs.docs) {
-        newIESUsers.add(IESStudentUser(
-            firstName: qsDoc['firstName'],
-            lastName: qsDoc['lastName'],
-            id: qsDoc.id,
-            // email: qsDoc['email'],
-            email: '',
-            dni: qsDoc['dni'],
-            book: qsDoc['book'],
-            page: qsDoc['page']));
-      }
-    });
-    return newIESUsers;
+  Future<void> updateSubjectRecord(
+      {required Syllabus syllabus,
+      required IESStudent studentUser,
+      required StudentRecordSubject subjectRecord,
+      required IESAdmin admin}) async {
+    try {
+      await Tools()
+          .repoFirestoreInstance
+          .collection("syllabuses")
+          .doc(syllabus.administrativeResolution)
+          .collection('students')
+          .doc(studentUser.id)
+          .collection("subjectRecords")
+          .doc(subjectRecord.subjectId.toString())
+          .update({
+        'courseGrade': subjectRecord.courseGrade,
+        'courseDate': subjectRecord.courseDateIfAny,
+        'finalExamDate': subjectRecord.finalExamDateIfAny,
+        'finalExamGrade': subjectRecord.finalExamGrade,
+        'adminID': admin.id
+      });
+    } on Exception {
+      throw "Error al actualizar el estudiante";
+    }
   }
 
   @override
-  Future<IESStudentUser> addStudent(
+  Future<List<StudentRecordSubject>> getStudentRecords(
+      {required IESStudent studentUser, required IESAdmin admin}) async {
+    try {
+      List<StudentRecordSubject> subjectRecords = [];
+      await Tools()
+          .repoFirestoreInstance
+          .collection("students")
+          .doc(studentUser.syllabusID)
+          .collection('syllabusStudents')
+          .doc(studentUser.id)
+          .collection("subjectRecords")
+          .get()
+          .then((qs) async {
+        for (var qsDoc in qs.docs) {
+          subjectRecords.add(StudentRecordSubject(
+              subjectId: int.parse(qsDoc.id),
+              finalExamDateIfAny: qsDoc['finalExamDate'] == null
+                  ? null
+                  : (qsDoc['finalExamDate'] as Timestamp).toDate(),
+              finalExamGrade: qsDoc['finalExamGrade'],
+              courseDateIfAny: qsDoc['courseDate'] == null
+                  ? null
+                  : (qsDoc['courseDate'] as Timestamp).toDate(),
+              adminID: qsDoc['adminID'],
+              courseGrade: qsDoc['courseGrade']));
+        }
+        subjectRecords.sort((a, b) => a.subjectId - b.subjectId);
+      });
+
+      return subjectRecords;
+    } on Exception {
+      throw "Error al actualizar el estudiante";
+    }
+  }
+
+  @override
+  Future<IESStudent> addStudent(
       {required Syllabus syllabus,
-      required IESAdminUser admin,
+      required IESAdmin admin,
       required String firstName,
       required String lastName,
       required int dni,
@@ -85,14 +117,15 @@ class StudentsFirebaseAdapter implements StudentsRepositoryPort {
       });
     }
 
-    IESStudentUser newIESStudent = IESStudentUser(
-        firstName: firstName,
-        lastName: lastName,
-        id: docRef.id,
-        email: '',
-        dni: dni,
-        book: book,
-        page: page);
+    IESStudent newIESStudent = IESStudent(
+      firstname: firstName,
+      surname: lastName,
+      id: docRef.id,
+      dni: dni,
+      book: book,
+      page: page,
+      syllabusID: syllabus.administrativeResolution,
+    );
     newIESStudent.subjectRecords = List.generate(30, (index) => index + 1)
         .map((subjectID) => StudentRecordSubject(
             subjectId: subjectID,
@@ -100,7 +133,7 @@ class StudentsFirebaseAdapter implements StudentsRepositoryPort {
             finalExamGrade: '-',
             courseDateIfAny: null,
             courseGrade: '',
-            admin: admin))
+            adminID: admin.id))
         .toList();
 
     for (var subjectRecord in newIESStudent.subjectRecords) {
@@ -116,72 +149,5 @@ class StudentsFirebaseAdapter implements StudentsRepositoryPort {
       });
     }
     return newIESStudent;
-  }
-
-  @override
-  Future<void> updateSubjectRecord(
-      {required Syllabus syllabus,
-      required IESStudentUser student,
-      required StudentRecordSubject subjectRecord,
-      required IESAdminUser admin}) async {
-    try {
-      await Tools()
-          .repoFirestoreInstance
-          .collection("syllabuses")
-          .doc(syllabus.administrativeResolution)
-          .collection('students')
-          .doc(student.id)
-          .collection("subjectRecords")
-          .doc(subjectRecord.subjectId.toString())
-          .update({
-        'courseGrade': subjectRecord.courseGrade,
-        'courseDate': subjectRecord.courseDateIfAny,
-        'finalExamDate': subjectRecord.finalExamDateIfAny,
-        'finalExamGrade': subjectRecord.finalExamGrade,
-        'adminID': admin.id
-      });
-    } on Exception {
-      throw "Error al actualizar el estudiante";
-    }
-  }
-
-  @override
-  Future<List<StudentRecordSubject>> getStudentRecords(
-      {required Syllabus syllabus,
-      required IESStudentUser student,
-      required IESAdminUser admin}) async {
-    try {
-      List<StudentRecordSubject> subjectRecords = [];
-      await Tools()
-          .repoFirestoreInstance
-          .collection("students")
-          .doc(syllabus.administrativeResolution)
-          .collection('syllabusStudents')
-          .doc(student.id)
-          .collection("subjectRecords")
-          .get()
-          .then((qs) async {
-        for (var qsDoc in qs.docs) {
-          subjectRecords.add(StudentRecordSubject(
-              subjectId: int.parse(qsDoc.id),
-              finalExamDateIfAny: qsDoc['finalExamDate'] == null
-                  ? null
-                  : (qsDoc['finalExamDate'] as Timestamp).toDate(),
-              finalExamGrade: qsDoc['finalExamGrade'],
-              courseDateIfAny: qsDoc['courseDate'] == null
-                  ? null
-                  : (qsDoc['courseDate'] as Timestamp).toDate(),
-              // admin: qsDoc['adminID'],
-              //TODO: traer admin verdadero..
-              admin: admin,
-              courseGrade: qsDoc['courseGrade']));
-        }
-        subjectRecords.sort((a, b) => a.subjectId - b.subjectId);
-      });
-
-      return subjectRecords;
-    } on Exception {
-      throw "Error al actualizar el estudiante";
-    }
   }
 }

@@ -12,7 +12,7 @@ class LoadMasterLedgerPage extends OperationPage<LoadMasterLedger> {
     super.key,
     required super.operation,
   }) : super(baseBuilder: (buildContext, state) {
-          IESStudentUser? currentStudentIfAny =
+          IESStudent? currentStudentRoleIfAny =
               operation.lastLoadMasterLedgerBaseState.selectedStudentIfAny;
           submitEditStudentForm(Map<String, dynamic> formData) {
             operation.addStudent(
@@ -109,7 +109,7 @@ class LoadMasterLedgerPage extends OperationPage<LoadMasterLedger> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        if (currentStudentIfAny != null)
+                        if (currentStudentRoleIfAny != null)
                           Container(
                             decoration: const BoxDecoration(
                                 color: Color.fromARGB(64, 236, 217, 5)),
@@ -119,7 +119,7 @@ class LoadMasterLedgerPage extends OperationPage<LoadMasterLedger> {
                               child: Row(
                                 children: [
                                   Text(
-                                    "${currentStudentIfAny.lastName}, ${currentStudentIfAny.firstName},DNI: ${currentStudentIfAny.dni}, Libro: ${currentStudentIfAny.book}, Folio: ${currentStudentIfAny.page}",
+                                    "${currentStudentRoleIfAny.surname}, ${currentStudentRoleIfAny.firstname},DNI: ${currentStudentRoleIfAny.dni}, Libro: ${currentStudentRoleIfAny.book}, Folio: ${currentStudentRoleIfAny.page}",
                                     style: Theme.of(buildContext)
                                         .textTheme
                                         .titleMedium,
@@ -241,7 +241,7 @@ class LoadMasterLedgerPage extends OperationPage<LoadMasterLedger> {
                               ),
                             ],
                           )
-                        else if (currentStudentIfAny != null)
+                        else if (currentStudentRoleIfAny != null)
                           Row(
                             children: [
                               SizedBox(

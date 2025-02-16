@@ -1,4 +1,5 @@
 import 'package:mini_vera/app/logged/logged.dart';
+import 'package:mini_vera/domain/entities/admins.dart';
 import 'package:mini_vera/domain/entities/students.dart';
 import 'package:mini_vera/domain/entities/syllabus.dart';
 import 'package:mini_vera/domain/entities/users.dart';
@@ -14,20 +15,20 @@ class LedgerStudentRecordSubject extends StudentRecordSubject {
       required super.finalExamDateIfAny,
       required super.finalExamGrade,
       required super.courseDateIfAny,
-      required super.admin,
+      required super.adminID,
       required super.courseGrade});
 
   @override
   String toString() {
-    return "subjectId $subjectId subjectName, $subjectName finalExamDateIfAny, $finalExamDateIfAny finalExamGrade, $finalExamGrade courseDateIfAny, $courseDateIfAny admin, $admin courseGrade $courseGrade";
+    return "subjectId $subjectId subjectName, $subjectName finalExamDateIfAny, $finalExamDateIfAny finalExamGrade, $finalExamGrade courseDateIfAny, $courseDateIfAny admin, $adminID courseGrade $courseGrade";
   }
 }
 
 enum LoadMasterLedgerExits { exit }
 
 class LoadMasterLedgerBaseState extends OperationState {
-  List<IESStudentUser> searchedStudents;
-  IESStudentUser? selectedStudentIfAny;
+  List<IESStudent> searchedStudents;
+  IESStudent? selectedStudentIfAny;
   int selectedYear;
   bool addingOrEditingStudent;
   List<LedgerStudentRecordSubject> currentSubjectRecords;
@@ -65,7 +66,7 @@ class LoadMasterLedger extends ChildOperation {
   bool addingStudent = false;
   bool editingStudent = false;
   late LoadMasterLedgerBaseState lastLoadMasterLedgerBaseState;
-  late IESAdminUser adminUserLogged;
+  late IESAdmin adminUserLogged;
   late Syllabus currentSyllabus;
   int selectedYear = 1;
   LoadMasterLedger({
@@ -87,7 +88,7 @@ class LoadMasterLedger extends ChildOperation {
           finalExamDateIfAny: aStudentRecord.finalExamDateIfAny,
           finalExamGrade: aStudentRecord.finalExamGrade,
           courseDateIfAny: aStudentRecord.courseDateIfAny,
-          admin: adminUserLogged,
+          adminID: adminUserLogged.id,
           courseGrade: aStudentRecord.courseGrade));
     }
     return ledgerRecords;
@@ -114,9 +115,17 @@ class LoadMasterLedger extends ChildOperation {
     String lastName =
         "${lastName1[0].toUpperCase()}${lastName1.substring(1).toLowerCase()}";
 
-    var students = await Tools()
-        .repoStudents
-        .searchStudentsByName(lastName: lastName, syllabus: currentSyllabus);
+    var users = await Tools().repoUsersRepository.searchUsersByName(
+        surname: lastName,
+        role: IESStudentRoleForSearch(
+            syllabusID: currentSyllabus.administrativeResolution));
+
+    List<IESStudent> students = [];
+    for (var user in users) {
+      for (var role in user.roles.whereType<IESStudentRole>()) {
+        students.add(IESStudent.fromUserAndRole(user, role));
+      }
+    }
 
     lastLoadMasterLedgerBaseState = LoadMasterLedgerBaseState(
         searchedStudents: students,
@@ -150,7 +159,7 @@ class LoadMasterLedger extends ChildOperation {
         .join(' ');
 
     try {
-      IESStudentUser newStudent = await Tools().repoStudents.addStudent(
+      IESStudent newStudent = await Tools().repoStudents.addStudent(
           admin: adminUserLogged,
           syllabus: currentSyllabus,
           firstName: firstName,
@@ -180,12 +189,10 @@ class LoadMasterLedger extends ChildOperation {
     }
   }
 
-  selectStudent(IESStudentUser selectedStudent) async {
+  selectStudent(IESStudent selectedStudent) async {
     try {
       var selSubjectRecords = await Tools().repoStudents.getStudentRecords(
-          syllabus: currentSyllabus,
-          student: selectedStudent,
-          admin: adminUserLogged);
+          studentUser: selectedStudent, admin: adminUserLogged);
 
       selectedStudent.subjectRecords = selSubjectRecords;
       lastLoadMasterLedgerBaseState = LoadMasterLedgerBaseState(
@@ -293,13 +300,13 @@ class LoadMasterLedger extends ChildOperation {
     try {
       Tools().repoStudents.updateSubjectRecord(
           syllabus: currentSyllabus,
-          student: lastLoadMasterLedgerBaseState.selectedStudentIfAny!,
+          studentUser: lastLoadMasterLedgerBaseState.selectedStudentIfAny!,
           subjectRecord: StudentRecordSubject(
               subjectId: record['id'],
               finalExamDateIfAny: record['finalExamDate'],
               finalExamGrade: record['finalExamGrade'],
               courseDateIfAny: record['courseDate'],
-              admin: adminUserLogged,
+              adminID: adminUserLogged.id,
               courseGrade: record['courseGrade']),
           admin: adminUserLogged);
 
@@ -319,7 +326,7 @@ class LoadMasterLedger extends ChildOperation {
               finalExamDateIfAny: record['finalExamDate'],
               finalExamGrade: record['finalExamGrade'],
               courseDateIfAny: record['courseDate'],
-              admin: adminUserLogged,
+              adminID: adminUserLogged.id,
               courseGrade: record['courseGrade']);
       emitConfirmation("Registro del estudiante actualizado con éxito");
       emit(lastLoadMasterLedgerBaseState);

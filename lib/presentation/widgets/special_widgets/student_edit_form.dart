@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:mini_vera/domain/entities/students.dart';
+import 'package:mini_vera/domain/entities/users.dart';
 
 class StudentEditingForm extends StatefulWidget {
-  final IESStudentUser? studentBeingEdited;
+  final IESUser? studentBeingEdited;
   final Function(Map<String, dynamic>) onSubmit;
   final Function() onCancel;
   const StudentEditingForm(

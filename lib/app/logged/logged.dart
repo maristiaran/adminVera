@@ -1,6 +1,6 @@
 import 'package:mini_vera/app/logged/logged_menu.dart';
 import 'package:mini_vera/app/signin.dart';
-import 'package:mini_vera/domain/entities/users.dart';
+import 'package:mini_vera/domain/entities/admins.dart';
 import 'package:mini_vera/mini_vera_app.dart';
 import 'package:operation_cubit/operation.dart';
 import 'package:operation_cubit/operation_cubit.dart';
@@ -14,7 +14,7 @@ class LoggedBaseState extends OperationState {
 }
 
 class Logged extends ChildOperation {
-  late IESAdminUser userLogged;
+  late IESAdmin userLogged;
   Logged({super.children, required super.blocProviderBuilder});
   @override
   bool get isAbstract => true;

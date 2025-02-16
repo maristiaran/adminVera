@@ -7,7 +7,7 @@ enum MainMenuProps { ctUserLogged }
 enum MainMenuExits { cancel, playRound }
 
 class UploadCourseRecordsBaseState extends OperationState {
-  IESAdminUser? userLoggedIfAny;
+  IESUser? userLoggedIfAny;
   // CTUnit? currentCTUnitIfAny;
   // CTTopic? currentCTTopicIfAny;
   UploadCourseRecordsBaseState({required this.userLoggedIfAny}

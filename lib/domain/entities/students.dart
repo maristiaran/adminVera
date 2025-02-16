@@ -1,59 +1,51 @@
-import 'package:mini_vera/domain/entities/users.dart';
+import 'package:mini_vera/domain/entities/users.dart'; // Importar las clases necesarias
+
+class IESStudent {
+  String firstname;
+  String surname;
+  String id;
+  final int dni;
+  int book;
+  int page;
+  String syllabusID;
+  List<StudentRecordSubject> subjectRecords = [];
+  IESStudent({
+    required this.firstname,
+    required this.surname,
+    required this.id,
+    required this.dni,
+    required this.book,
+    required this.page,
+    required this.syllabusID,
+  });
+
+  // Nuevo constructor
+  IESStudent.fromUserAndRole(IESUser user, IESStudentRole role)
+      : firstname = user.firstname,
+        surname = user.surname,
+        id = user.id,
+        dni = user.dni,
+        book = role.book,
+        page = role.page,
+        syllabusID = role.syllabusID;
+}
 
 enum SubjectState { approved, regular, dissaproved, coursing, nule }
 
-// Student Record subject
 class StudentRecordSubject {
   int subjectId;
   DateTime? finalExamDateIfAny;
   String finalExamGrade;
   DateTime? courseDateIfAny;
   String courseGrade;
-  IESAdminUser admin;
-  // bool endCourseApproval = false;
-  // bool coursing = false;
+  String adminID;
 
-  // SubjectState get subjectState {
-  //   if (finalExamDateIfAny != null) {
-  //     return SubjectState.approved;
-  //   } else if (courseDateIfAny != null) {
-  //     return SubjectState.regular;
-  //   } else if (coursing) {
-  //     return SubjectState.coursing;
-  //   } else {
-  //     return SubjectState.nule;
-  //   }
-  // }
-
-  StudentRecordSubject(
-      {required this.subjectId,
-      required this.finalExamDateIfAny,
-      required this.finalExamGrade,
-      required this.courseDateIfAny,
-      required this.admin,
-      required this.courseGrade});
-}
-
-class IESStudentUser {
-  String firstName;
-  String lastName;
-  String id;
-  String email;
-  int dni;
-  int book;
-  int page;
-  List<StudentRecordSubject> subjectRecords = [];
-  IESStudentUser(
-      {required this.firstName,
-      required this.lastName,
-      required this.id,
-      required this.email,
-      required this.dni,
-      required this.book,
-      required this.page});
-
-  @override
-  String toString() {
-    return '$lastName, $firstName, DNI: $dni, Libro: $book, Folio: $page ';
-  }
+  StudentRecordSubject({
+    required this.subjectId,
+    required this.finalExamDateIfAny,
+    required this.finalExamGrade,
+    required this.courseDateIfAny,
+    required this.adminID,
+    required this.courseGrade,
+  });
 }

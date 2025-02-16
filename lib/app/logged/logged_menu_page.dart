@@ -12,7 +12,7 @@ class LoggedMenuPage extends OperationPage<LoggedMenu> {
               return Scaffold(
                 appBar: AppBar(
                     title: Text(
-                        "${operation.userLogged.lastName}, ${operation.userLogged.firstName}")),
+                        "${operation.userLogged.surname}, ${operation.userLogged.firstname}")),
                 body: Padding(
                   padding: const EdgeInsets.all(60.0),
                   child: Center(
